@@ -22,6 +22,7 @@ import {
   writeDone,
 } from "./http-common.js";
 import { getBearerToken, resolveAgentIdForRequest, resolveSessionKey } from "./http-utils.js";
+import { createUserBoundSendWhatsApp } from "../whatsapp/index.js";
 
 type OpenAiHttpOptions = {
   auth: ResolvedGatewayAuth;
@@ -233,7 +234,17 @@ export async function handleOpenAiHttpRequest(
     : resolveOpenAiSessionKey({ req, agentId, user });
 
   const runId = `chatcmpl_${randomUUID()}`;
-  const deps = createDefaultDeps();
+  const baseDeps = createDefaultDeps();
+
+  // Inject multi-tenant WhatsApp adapter when channel is whatsapp
+  const deps =
+    userMetadata?.channel === "whatsapp" && effectiveUserId !== "anonymous"
+      ? {
+          ...baseDeps,
+          sendWhatsApp: createUserBoundSendWhatsApp(effectiveUserId),
+        }
+      : baseDeps;
+
   const startTime = Date.now();
 
   // Extract the current user message content (before any flattening)

@@ -248,7 +248,7 @@ async function testBaileysAuth() {
   // Clean up old test directory
   try {
     await fs.rm(TEST_AUTH_DIR, { recursive: true, force: true });
-  } catch (e) {}
+  } catch (e) { }
 
   await fs.mkdir(TEST_AUTH_DIR, { recursive: true });
 
@@ -412,4 +412,3 @@ testBaileysAuth().catch((err) => {
   console.error('Error:', err);
   process.exit(1);
 });
-
