@@ -1,6 +1,6 @@
 /**
- * Credentials module for multi-tenant WhatsApp.
- * Re-exports credential provider and cache.
+ * Credentials module for multi-tenant WhatsApp and Telegram.
+ * Re-exports credential providers and cache.
  */
 
 export {
@@ -8,5 +8,11 @@ export {
   getSupabaseCredentialProvider,
   type WhatsAppCredentials,
 } from "./supabase-credentials.js";
+
+export {
+  TelegramCredentialProvider,
+  getTelegramCredentialProvider,
+  type TelegramCredentials,
+} from "./telegram-credentials.js";
 
 export { CredentialCache, getCredentialCache, setCredentialCache } from "./credential-cache.js";

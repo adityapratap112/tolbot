@@ -1,15 +1,20 @@
-import { makeWASocket, useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } from '@whiskeysockets/baileys';
-import QRCode from 'qrcode';
-import fs from 'fs/promises';
-import path from 'path';
-import { createClient } from '@supabase/supabase-js';
-import crypto from 'crypto';
-import dotenv from 'dotenv';
+import {
+  makeWASocket,
+  useMultiFileAuthState,
+  DisconnectReason,
+  fetchLatestBaileysVersion,
+} from "@whiskeysockets/baileys";
+import QRCode from "qrcode";
+import fs from "fs/promises";
+import path from "path";
+import { createClient } from "@supabase/supabase-js";
+import crypto from "crypto";
+import dotenv from "dotenv";
 
 // Load environment variables
 dotenv.config();
 
-const TEST_AUTH_DIR = './test/baileys-session';
+const TEST_AUTH_DIR = "./test/baileys-session";
 
 // ============================================
 // Supabase Configuration
@@ -17,14 +22,14 @@ const TEST_AUTH_DIR = './test/baileys-session';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const AES_256_KEY = process.env.AES_256_KEY;
-const USER_ID = process.env.TEST_USER_ID || '291fdea1-f96f-44d1-bc9c-5c2e02c1ee89'; // Default to first user
+const USER_ID = process.env.TEST_USER_ID || "291fdea1-f96f-44d1-bc9c-5c2e02c1ee89"; // Default to first user
 
 let supabase = null;
 
 // Initialize Supabase client
 function initSupabase() {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.warn('⚠️  Supabase credentials not found. Credentials will only be saved locally.');
+    console.warn("⚠️  Supabase credentials not found. Credentials will only be saved locally.");
     return null;
   }
   return createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -35,43 +40,43 @@ function initSupabase() {
 // ============================================
 function encryptAES256(data, key) {
   try {
-    const keyBuffer = Buffer.from(key, 'hex');
+    const keyBuffer = Buffer.from(key, "hex");
     const iv = crypto.randomBytes(16);
-    const cipher = crypto.createCipheriv('aes-256-gcm', keyBuffer, iv);
+    const cipher = crypto.createCipheriv("aes-256-gcm", keyBuffer, iv);
 
-    let encrypted = cipher.update(JSON.stringify(data), 'utf-8', 'hex');
-    encrypted += cipher.final('hex');
+    let encrypted = cipher.update(JSON.stringify(data), "utf-8", "hex");
+    encrypted += cipher.final("hex");
 
     const authTag = cipher.getAuthTag();
-    return `${iv.toString('hex')}:${encrypted}:${authTag.toString('hex')}`;
+    return `${iv.toString("hex")}:${encrypted}:${authTag.toString("hex")}`;
   } catch (error) {
-    console.error('Encryption error:', error);
+    console.error("Encryption error:", error);
     throw error;
   }
 }
 
 function decryptAES256(encryptedData, key) {
   try {
-    const keyBuffer = Buffer.from(key, 'hex');
-    const parts = encryptedData.split(':');
+    const keyBuffer = Buffer.from(key, "hex");
+    const parts = encryptedData.split(":");
 
     if (parts.length !== 3) {
-      throw new Error('Invalid encrypted data format');
+      throw new Error("Invalid encrypted data format");
     }
 
-    const iv = Buffer.from(parts[0], 'hex');
-    const encrypted = Buffer.from(parts[1], 'hex');
-    const authTag = Buffer.from(parts[2], 'hex');
+    const iv = Buffer.from(parts[0], "hex");
+    const encrypted = Buffer.from(parts[1], "hex");
+    const authTag = Buffer.from(parts[2], "hex");
 
-    const decipher = crypto.createDecipheriv('aes-256-gcm', keyBuffer, iv);
+    const decipher = crypto.createDecipheriv("aes-256-gcm", keyBuffer, iv);
     decipher.setAuthTag(authTag);
 
-    let decrypted = decipher.update(encrypted, 'hex', 'utf-8');
-    decrypted += decipher.final('utf-8');
+    let decrypted = decipher.update(encrypted, "hex", "utf-8");
+    decrypted += decipher.final("utf-8");
 
     return JSON.parse(decrypted);
   } catch (error) {
-    console.error('Decryption error:', error);
+    console.error("Decryption error:", error);
     throw error;
   }
 }
@@ -81,12 +86,12 @@ function decryptAES256(encryptedData, key) {
 // ============================================
 async function saveCredentialsToSupabase(creds) {
   if (!supabase) {
-    console.log('⚠️  Supabase not initialized, skipping cloud save');
+    console.log("⚠️  Supabase not initialized, skipping cloud save");
     return;
   }
 
   try {
-    console.log('\n💾 Saving credentials to Supabase...');
+    console.log("\n💾 Saving credentials to Supabase...");
 
     // Prepare credential data
     const credentialData = {
@@ -116,28 +121,28 @@ async function saveCredentialsToSupabase(creds) {
 
     // Upsert credentials
     const { data, error } = await supabase
-      .from('whatsapp_credentials')
-      .upsert(credentialData, { onConflict: 'user_id' });
+      .from("whatsapp_credentials")
+      .upsert(credentialData, { onConflict: "user_id" });
 
     if (error) {
-      console.error('❌ Error saving credentials:', error);
+      console.error("❌ Error saving credentials:", error);
       return;
     }
 
-    console.log('✅ Credentials saved to Supabase');
+    console.log("✅ Credentials saved to Supabase");
   } catch (error) {
-    console.error('❌ Failed to save credentials to Supabase:', error);
+    console.error("❌ Failed to save credentials to Supabase:", error);
   }
 }
 
 async function saveKeysToSupabase(keys) {
   if (!supabase) {
-    console.log('⚠️  Supabase not initialized, skipping cloud save');
+    console.log("⚠️  Supabase not initialized, skipping cloud save");
     return;
   }
 
   try {
-    console.log('\n💾 Saving keys to Supabase...');
+    console.log("\n💾 Saving keys to Supabase...");
 
     const keyRecords = [];
 
@@ -154,51 +159,54 @@ async function saveKeysToSupabase(keys) {
     }
 
     if (keyRecords.length === 0) {
-      console.log('⚠️  No keys to save');
+      console.log("⚠️  No keys to save");
       return;
     }
 
     // Upsert keys
     const { data, error } = await supabase
-      .from('whatsapp_keys')
-      .upsert(keyRecords, { onConflict: 'user_id,key_type,key_id' });
+      .from("whatsapp_keys")
+      .upsert(keyRecords, { onConflict: "user_id,key_type,key_id" });
 
     if (error) {
-      console.error('❌ Error saving keys:', error);
+      console.error("❌ Error saving keys:", error);
       return;
     }
 
     console.log(`✅ Saved ${keyRecords.length} keys to Supabase`);
   } catch (error) {
-    console.error('❌ Failed to save keys to Supabase:', error);
+    console.error("❌ Failed to save keys to Supabase:", error);
   }
 }
 
 // Wrapper to log all operations
 function createLoggingAuthState(originalState) {
-  console.log('\n=== INITIAL STATE ===');
-  console.log('Creds keys:', Object.keys(originalState.state.creds));
-  console.log('Creds sample:', JSON.stringify(originalState.state.creds, null, 2).substring(0, 500));
+  console.log("\n=== INITIAL STATE ===");
+  console.log("Creds keys:", Object.keys(originalState.state.creds));
+  console.log(
+    "Creds sample:",
+    JSON.stringify(originalState.state.creds, null, 2).substring(0, 500),
+  );
 
   return {
     state: {
       creds: originalState.state.creds,
       keys: {
         get: async (type, ids) => {
-          console.log('\n=== KEYS GET REQUEST ===');
-          console.log('Type:', type);
-          console.log('IDs:', ids);
+          console.log("\n=== KEYS GET REQUEST ===");
+          console.log("Type:", type);
+          console.log("IDs:", ids);
 
           const result = await originalState.state.keys.get(type, ids);
 
-          console.log('Result keys:', Object.keys(result));
-          console.log('Result sample:', JSON.stringify(result, null, 2).substring(0, 300));
+          console.log("Result keys:", Object.keys(result));
+          console.log("Result sample:", JSON.stringify(result, null, 2).substring(0, 300));
 
           return result;
         },
         set: async (data) => {
-          console.log('\n=== KEYS SET REQUEST ===');
-          console.log('Categories:', Object.keys(data));
+          console.log("\n=== KEYS SET REQUEST ===");
+          console.log("Categories:", Object.keys(data));
 
           for (const category in data) {
             console.log(`\nCategory: ${category}`);
@@ -208,7 +216,10 @@ function createLoggingAuthState(originalState) {
             const firstId = Object.keys(data[category])[0];
             if (firstId) {
               const sample = data[category][firstId];
-              console.log(`  Sample (${firstId}):`, JSON.stringify(sample, null, 2).substring(0, 300));
+              console.log(
+                `  Sample (${firstId}):`,
+                JSON.stringify(sample, null, 2).substring(0, 300),
+              );
             }
           }
 
@@ -217,38 +228,41 @@ function createLoggingAuthState(originalState) {
 
           // Save to Supabase
           await saveKeysToSupabase(data);
-        }
-      }
+        },
+      },
     },
     saveCreds: async () => {
-      console.log('\n=== SAVE CREDS CALLED ===');
-      console.log('Creds to save:', JSON.stringify(originalState.state.creds, null, 2).substring(0, 500));
+      console.log("\n=== SAVE CREDS CALLED ===");
+      console.log(
+        "Creds to save:",
+        JSON.stringify(originalState.state.creds, null, 2).substring(0, 500),
+      );
 
       // Save locally
       await originalState.saveCreds();
 
       // Save to Supabase
       await saveCredentialsToSupabase(originalState.state.creds);
-    }
+    },
   };
 }
 
 async function testBaileysAuth() {
-  console.log('Starting Baileys authentication test with QR CODE...\n');
+  console.log("Starting Baileys authentication test with QR CODE...\n");
 
   // Initialize Supabase
   supabase = initSupabase();
   if (supabase) {
-    console.log('✅ Supabase initialized - credentials will be saved to cloud');
+    console.log("✅ Supabase initialized - credentials will be saved to cloud");
     console.log(`   User ID: ${USER_ID}\n`);
   } else {
-    console.log('⚠️  Supabase not configured - credentials will only be saved locally\n');
+    console.log("⚠️  Supabase not configured - credentials will only be saved locally\n");
   }
 
   // Clean up old test directory
   try {
     await fs.rm(TEST_AUTH_DIR, { recursive: true, force: true });
-  } catch (e) { }
+  } catch (e) {}
 
   await fs.mkdir(TEST_AUTH_DIR, { recursive: true });
 
@@ -269,7 +283,7 @@ async function testBaileysAuth() {
       auth: authState.state,
       version,
       printQRInTerminal: false, // We'll handle QR display manually
-      browser: ['Chrome', 'Chrome', '131.0.0.0'], // More realistic browser config
+      browser: ["Chrome", "Chrome", "131.0.0.0"], // More realistic browser config
       syncFullHistory: false,
       markOnlineOnConnect: true,
     });
@@ -279,70 +293,70 @@ async function testBaileysAuth() {
 
   let sock = await createSocket();
 
-  sock.ev.on('creds.update', () => {
-    console.log('\n=== CREDS UPDATE EVENT ===');
+  sock.ev.on("creds.update", () => {
+    console.log("\n=== CREDS UPDATE EVENT ===");
     authState.saveCreds();
   });
 
-  sock.ev.on('connection.update', async (update) => {
-    console.log('\n=== CONNECTION UPDATE ===');
-    console.log('Update:', JSON.stringify(update, null, 2));
+  sock.ev.on("connection.update", async (update) => {
+    console.log("\n=== CONNECTION UPDATE ===");
+    console.log("Update:", JSON.stringify(update, null, 2));
 
     const { connection, lastDisconnect, qr } = update;
 
     // Handle QR code display
     if (qr) {
-      console.log('\n=== QR CODE RECEIVED ===');
-      console.log('Generating QR code for scanning...\n');
+      console.log("\n=== QR CODE RECEIVED ===");
+      console.log("Generating QR code for scanning...\n");
 
       try {
         // Print QR code to terminal
-        const qrString = await QRCode.toString(qr, { type: 'terminal', small: true });
+        const qrString = await QRCode.toString(qr, { type: "terminal", small: true });
         console.log(qrString);
-        console.log('\n📱 Scan this QR code with WhatsApp on your phone:');
-        console.log('   1. Open WhatsApp on your phone');
-        console.log('   2. Tap Menu or Settings');
-        console.log('   3. Tap Linked Devices');
-        console.log('   4. Tap Link a Device');
-        console.log('   5. Point your phone at this screen to scan the QR code\n');
+        console.log("\n📱 Scan this QR code with WhatsApp on your phone:");
+        console.log("   1. Open WhatsApp on your phone");
+        console.log("   2. Tap Menu or Settings");
+        console.log("   3. Tap Linked Devices");
+        console.log("   4. Tap Link a Device");
+        console.log("   5. Point your phone at this screen to scan the QR code\n");
         console.log('⚠️  IMPORTANT: If you see "Couldn\'t link device" on WhatsApp:');
-        console.log('   - This is a WhatsApp server-side rejection (not a code issue)');
-        console.log('   - WhatsApp may detect this as suspicious activity');
-        console.log('   - Try: waiting 5-10 minutes and scanning again');
-        console.log('   - Or: use a different phone number\n');
+        console.log("   - This is a WhatsApp server-side rejection (not a code issue)");
+        console.log("   - WhatsApp may detect this as suspicious activity");
+        console.log("   - Try: waiting 5-10 minutes and scanning again");
+        console.log("   - Or: use a different phone number\n");
       } catch (err) {
-        console.error('Error generating QR code:', err);
+        console.error("Error generating QR code:", err);
       }
     }
 
-    if (connection === 'open') {
-      console.log('\n=== CONNECTION OPENED ===');
-      console.log('✅ Successfully connected! Checking saved files...\n');
+    if (connection === "open") {
+      console.log("\n=== CONNECTION OPENED ===");
+      console.log("✅ Successfully connected! Checking saved files...\n");
 
       // List all files created
       const files = await fs.readdir(TEST_AUTH_DIR);
-      console.log('📁 Files created:', files.length);
-      console.log('Files:', files.join(', '));
+      console.log("📁 Files created:", files.length);
+      console.log("Files:", files.join(", "));
 
       // Show content of each file
       for (const file of files) {
         const filePath = path.join(TEST_AUTH_DIR, file);
-        const content = await fs.readFile(filePath, 'utf-8');
+        const content = await fs.readFile(filePath, "utf-8");
         const parsed = JSON.parse(content);
 
-        console.log(`\n${'='.repeat(60)}`);
+        console.log(`\n${"=".repeat(60)}`);
         console.log(`📄 FILE: ${file}`);
-        console.log(`${'='.repeat(60)}`);
-        console.log('Size:', content.length, 'bytes');
-        console.log('Top-level keys:', Object.keys(parsed));
+        console.log(`${"=".repeat(60)}`);
+        console.log("Size:", content.length, "bytes");
+        console.log("Top-level keys:", Object.keys(parsed));
 
         // Show detailed structure for each key
         for (const key of Object.keys(parsed)) {
           const value = parsed[key];
-          if (value && typeof value === 'object') {
+          if (value && typeof value === "object") {
             if (Array.isArray(value)) {
               console.log(`  ${key}: Array[${value.length}]`);
-            } else if (value.type === 'Buffer') {
+            } else if (value.type === "Buffer") {
               console.log(`  ${key}: Buffer[${value.data?.length || 0} bytes]`);
             } else {
               console.log(`  ${key}: Object with keys:`, Object.keys(value));
@@ -352,11 +366,11 @@ async function testBaileysAuth() {
           }
         }
 
-        console.log('\nFull content (first 500 chars):');
-        console.log(content.substring(0, 500) + '...\n');
+        console.log("\nFull content (first 500 chars):");
+        console.log(content.substring(0, 500) + "...\n");
       }
 
-      console.log('\n✅ Authentication data captured successfully!');
+      console.log("\n✅ Authentication data captured successfully!");
       console.log(`📂 All files saved in: ${TEST_AUTH_DIR}\n`);
 
       // Disconnect and exit
@@ -366,42 +380,42 @@ async function testBaileysAuth() {
       }, 2000);
     }
 
-    if (connection === 'close') {
+    if (connection === "close") {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       const isLoggedOut = statusCode === DisconnectReason.loggedOut;
       const isRestartRequired = statusCode === DisconnectReason.restartRequired;
 
       console.log(`\n❌ Connection closed (status: ${statusCode})`);
-      console.log('Is logged out?', isLoggedOut);
-      console.log('Restart required?', isRestartRequired);
+      console.log("Is logged out?", isLoggedOut);
+      console.log("Restart required?", isRestartRequired);
 
       // Show what files were created even on failure
-      console.log('\n=== Checking files created so far ===');
+      console.log("\n=== Checking files created so far ===");
       try {
         const files = await fs.readdir(TEST_AUTH_DIR);
-        console.log('Files:', files);
+        console.log("Files:", files);
 
         for (const file of files) {
           const filePath = path.join(TEST_AUTH_DIR, file);
-          const content = await fs.readFile(filePath, 'utf-8');
+          const content = await fs.readFile(filePath, "utf-8");
           console.log(`\n📄 ${file} (${content.length} bytes)`);
-          console.log('Keys:', Object.keys(JSON.parse(content)));
+          console.log("Keys:", Object.keys(JSON.parse(content)));
         }
       } catch (e) {
-        console.log('No files created yet');
+        console.log("No files created yet");
       }
 
       // Handle restart required error - this is expected after successful pairing
       if (isRestartRequired && connectionAttempts < maxAttempts) {
-        console.log('\n🔄 Restarting connection after pairing...');
-        await new Promise(r => setTimeout(r, 2000)); // Wait before reconnecting
+        console.log("\n🔄 Restarting connection after pairing...");
+        await new Promise((r) => setTimeout(r, 2000)); // Wait before reconnecting
         sock.end();
         sock = await createSocket();
       } else if (isLoggedOut) {
-        console.log('\n✅ Logged out successfully');
+        console.log("\n✅ Logged out successfully");
         process.exit(0);
       } else if (connectionAttempts >= maxAttempts) {
-        console.log('\n❌ Max connection attempts reached');
+        console.log("\n❌ Max connection attempts reached");
         process.exit(1);
       }
     }
@@ -409,6 +423,6 @@ async function testBaileysAuth() {
 }
 
 testBaileysAuth().catch((err) => {
-  console.error('Error:', err);
+  console.error("Error:", err);
   process.exit(1);
 });
