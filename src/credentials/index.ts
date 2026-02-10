@@ -15,4 +15,10 @@ export {
   type TelegramCredentials,
 } from "./telegram-credentials.js";
 
+export {
+  DiscordCredentialProvider,
+  getDiscordCredentialProvider,
+  type DiscordCredentials,
+} from "./discord-credentials.js";
+
 export { CredentialCache, getCredentialCache, setCredentialCache } from "./credential-cache.js";
